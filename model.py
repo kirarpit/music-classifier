@@ -106,7 +106,7 @@ class Model():
             self.sess.run(self.minimize, feed_dict={self.X: batch_X, self.Y_: batch_Y, 
                                                self.step: i, self.pkeep: 0.75})
             
-            if i%10 == 0:
+            if i%10 == 0 and len(X_valid) != 0:
                 acc, loss = self.sess.run([self.accuracy, self.cross_entropy], 
                                      feed_dict={self.X: X_valid, self.Y_: Y_valid,
                                                 self.pkeep: 1.0})

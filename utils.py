@@ -40,6 +40,8 @@ def get_image_data():
     X = []
     Y = []
     for filename in os.listdir('images'):
+        if filename == 'validation': continue
+        
         image = Image.open('images/' + filename)
         image = np.asarray(image, dtype=np.uint8)
         image = image[:, :, np.newaxis]/255
@@ -100,8 +102,8 @@ def save_preds(data, filename):
     f = open(filename,'w')
     f.write("id,class\n")
     
-    for _ in range(len(data)):
-        f.write(data[0] + "," + data[1] + "\n")
+    for row in data:
+        f.write(row[0] + "," + row[1] + "\n")
     f.close()
     
 def to_label(idx):

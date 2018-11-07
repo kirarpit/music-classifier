@@ -16,7 +16,7 @@ X_test = load_test_data()
 X_train, Y_train, X_valid, Y_valid = split_data(X, Y, 0.85)
 
 model = Model()
-model.train(X_train, Y_train, X_valid, Y_valid)
+model.train(X_train, Y_train, X_valid, Y_valid, 20)
 
 preds = []
 for filename, sample_images in X_test:
