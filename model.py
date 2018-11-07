@@ -9,6 +9,7 @@ Created on Tue Nov  6 23:33:06 2018
 import tensorflow as tf
 import math
 from utils import get_mini_batch
+from graph_plot import GraphPlot
 
 input_size = 128
 genre_size = 10
@@ -20,6 +21,10 @@ conv_layers = [
 
 class Model():
     def __init__(self):
+        self.graph_plot = GraphPlot("Performance", "Steps", "% Accuracy")
+        self.graph_plot.addPlot(0, "training")
+        self.graph_plot.addPlot(1, "validation")
+
         self.init_weights()
         self.init_graph()
         init = tf.global_variables_initializer()
@@ -96,12 +101,15 @@ class Model():
         self.minimize = tf.train.AdamOptimizer(lr).minimize(self.cross_entropy)
     
     def train(self, X_train, Y_train, X_valid, Y_valid, iterations=20):
+        print("Training model.")
+
         for i in range(iterations):
             batch_X, batch_Y = get_mini_batch(X_train, Y_train)
             acc, loss = self.sess.run([self.accuracy, self.cross_entropy], 
                                  feed_dict={self.X: batch_X, self.Y_: batch_Y,
                                             self.step: i, self.pkeep: 1.0})
             print("Step: {}, Accuracy: {}, Loss: {}".format(i, acc, loss))
+            self.graph_plot.addData((i, acc), 0)
             
             self.sess.run(self.minimize, feed_dict={self.X: batch_X, self.Y_: batch_Y, 
                                                self.step: i, self.pkeep: 0.75})
@@ -111,6 +119,10 @@ class Model():
                                      feed_dict={self.X: X_valid, self.Y_: Y_valid,
                                                 self.pkeep: 1.0})
                 print("\nTesting data, Accuracy: {}, Loss: {}\n".format(acc, loss))
+                self.graph_plot.addData((i, acc), 1)
+                self.graph_plot.plot()
 
     def predict(self, X):
+        print("Predicting.")
+
         return self.sess.run(self.Y, feed_dict={self.X: X, self.pkeep: 1.0})
