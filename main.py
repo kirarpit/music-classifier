@@ -18,17 +18,14 @@ X_valid, Y_valid = get_image_data('valid', songs_valid)
 
 X_test, keys = get_image_data('test')
 
-model = Model()
-model.train(X_train, Y_train, X_valid, Y_valid, 100)
+model = Model(True)
+model.train(X_train, Y_train, X_valid, Y_valid, 21)
 
 preds = model.predict(X_test)
 preds = [to_label(pred) for pred in preds]
 save_preds(keys, preds, 'predictions.csv')
 
 
-#saving/loading model
-#max_pooling
+#check accuracy on old model
 #batch normalization
-#checkpoints!
-#different archi. (more like what medium guy did)
 #residual layers!

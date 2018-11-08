@@ -41,3 +41,9 @@ def get_songs():
         s.add('.'.join(file.split('.')[:2]) + '.png')
         
     return np.array(list(s))
+
+def get_latest_model():
+    files = glob.glob("saved_models/*meta")
+    files.sort()
+    
+    return files[-1]

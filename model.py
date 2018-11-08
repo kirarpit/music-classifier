@@ -9,7 +9,7 @@ Created on Tue Nov  6 23:33:06 2018
 import tensorflow as tf
 import math
 import operator
-from utils import get_mini_batch, to_label
+from utils import get_mini_batch, get_latest_model
 from graph_plot import GraphPlot
 import numpy as np
 
@@ -21,10 +21,11 @@ conv_layers = [
 	 , {'filters':32, 'kernel_size': (4, 4), 'stride':4}
 	]
 fully_conn_layer = 1024
+pkeep = 0.5
 
 class Model():
     def __init__(self, load_model=False):
-        self.graph_plot = GraphPlot("Performance", "Steps", "% Accuracy")
+        self.graph_plot = GraphPlot("accuracy", "Steps", "% Accuracy")
         self.graph_plot.addPlot(0, "training")
         self.graph_plot.addPlot(1, "validation")
 
@@ -37,9 +38,10 @@ class Model():
             self.init_weights()
             self.init_graph()
             
+            #must be done after initializing graph as graph might have hidden variables
             init = tf.global_variables_initializer()
             self.sess.run(init)
-#            self.saver = tf.train.Saver()
+            self.saver = tf.train.Saver(max_to_keep=4)
 
     def init_weights(self):
         print("Initializing weights.")
@@ -82,10 +84,10 @@ class Model():
     def init_graph(self):
         print("Initializing graph.")
 
-        self.X = tf.placeholder(tf.float32, [None, input_size, input_size, 1])
-        self.Y_ = tf.placeholder(tf.float32, [None, genre_size])
-        self.step = tf.placeholder(tf.int32)
-        self.pkeep = tf.placeholder(tf.float32)
+        self.X = tf.placeholder(tf.float32, [None, input_size, input_size, 1], name="X")
+        self.Y_ = tf.placeholder(tf.float32, [None, genre_size], name="Y_")
+        self.step = tf.placeholder(tf.int32, name="step")
+        self.pkeep = tf.placeholder(tf.float32, name="pkeep")
     
         Y = self.X
         for idx, layer in enumerate(conv_layers):
@@ -94,7 +96,7 @@ class Model():
             
             if 'max_pool' in layer:
                 k = layer['max_pool']
-                Y = tf.nn.max_pool(Y, ksize=[1, k, k, 1], padding='SAME')
+                Y = tf.nn.max_pool(Y, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
                 
             print(Y.shape)
     
@@ -105,18 +107,18 @@ class Model():
         
         Wi, Bi, idx = self.get_next_weights(idx)
         Ylogits = tf.matmul(Y, Wi) + Bi
-        self.Y = tf.nn.softmax(Ylogits)
+        self.Y = tf.nn.softmax(Ylogits, name="Y")
     
         # cross-entropy loss function (= -sum(Y_i * log(Yi)) )
         cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=Ylogits, labels=self.Y_)
-        self.cross_entropy = tf.reduce_mean(cross_entropy)*100
+        self.cross_entropy = tf.reduce_mean(cross_entropy, name="cross_entropy")*100
     
         # accuracy of the trained model, between 0 (worst) and 1 (best)
         correct_prediction = tf.equal(tf.argmax(self.Y, 1), tf.argmax(self.Y_, 1))
-        self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
     
         lr = 0.0001 +  tf.train.exponential_decay(0.003, self.step, 2000, 1/math.e)
-        self.minimize = tf.train.AdamOptimizer(lr).minimize(self.cross_entropy)
+        self.minimize = tf.train.AdamOptimizer(lr, name="minimize").minimize(self.cross_entropy)
     
     def train(self, X_train, Y_train, X_valid, Y_valid, iterations=20):
         print("Training model.")
@@ -130,7 +132,7 @@ class Model():
             self.graph_plot.addData((i, acc), 0)
             
             self.sess.run(self.minimize, feed_dict={self.X: batch_X, self.Y_: batch_Y, 
-                                               self.step: i, self.pkeep: 0.75})
+                                               self.step: i, self.pkeep: pkeep})
             
             if i%10 == 0 and len(X_valid) != 0:
                 acc = self.check_accuracy(X_valid, Y_valid)
@@ -138,8 +140,8 @@ class Model():
                 self.graph_plot.addData((i, acc), 1)
                 self.graph_plot.plot()
                 
-#            if i%100 == 0:
-#                self.save_model(i)
+            if i%100 == 0:
+                self.save_model(i)
 
     def check_accuracy(self, X, Y):
         preds = self.predict(X)
@@ -147,8 +149,6 @@ class Model():
         return accuracy
     
     def predict(self, X):
-        print("Predicting.")
-        
         preds = []
         for sample_images in X:
             votes = {}
@@ -168,7 +168,7 @@ class Model():
         return preds
 
     def load_model(self):
-        filename = self.get_latest_model()
+        filename = get_latest_model()
         self.saver = tf.train.import_meta_graph(filename)
         self.saver.restore(self.sess, tf.train.latest_checkpoint('saved_models/'))
         graph = tf.get_default_graph()
@@ -183,12 +183,17 @@ class Model():
             i += 1
             self.B.append(variables[i])
             i += 1
-            
-        #loading tensors
         
+        #loading tensors
+        self.X = graph.get_tensor_by_name("X:0")
+        self.Y_ = graph.get_tensor_by_name("Y_:0")
+        self.step = graph.get_tensor_by_name("step:0")
+        self.pkeep = graph.get_tensor_by_name("pkeep:0")
+        self.Y = graph.get_tensor_by_name("Y:0")
+        self.cross_entropy = graph.get_tensor_by_name("cross_entropy:0")*100
+        self.accuracy = graph.get_tensor_by_name("accuracy:0")
+        self.minimize = graph.get_operation_by_name("minimize")        
     
     def save_model(self, i=0):
-        self.saver.save(self.sess, 'saved_models/trained_model', global_step=i, max_to_keep=4)
-        
-    def get_latest_model(self):
-        pass
+        print("Saving model with global step:{}".format(i))
+        self.saver.save(self.sess, 'saved_models/trained_model', global_step=i)
