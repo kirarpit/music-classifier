@@ -46,4 +46,4 @@ def get_latest_model():
     files = glob.glob("saved_models/*meta")
     files.sort()
     
-    return files[-1]
+    return files[-1] if len(files) != 0 else None

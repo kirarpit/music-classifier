@@ -33,8 +33,9 @@ class Model():
         self.sess = tf.Session()
 
         if load_model:
-            self.load_model()
-        else:
+            success = self.load_model()
+            
+        if not success:
             self.init_weights()
             self.init_graph()
             
@@ -169,6 +170,8 @@ class Model():
 
     def load_model(self):
         filename = get_latest_model()
+        if filename is None: return False
+        
         self.saver = tf.train.import_meta_graph(filename)
         self.saver.restore(self.sess, tf.train.latest_checkpoint('saved_models/'))
         graph = tf.get_default_graph()
@@ -192,8 +195,10 @@ class Model():
         self.Y = graph.get_tensor_by_name("Y:0")
         self.cross_entropy = graph.get_tensor_by_name("cross_entropy:0")*100
         self.accuracy = graph.get_tensor_by_name("accuracy:0")
-        self.minimize = graph.get_operation_by_name("minimize")        
-    
+        self.minimize = graph.get_operation_by_name("minimize")   
+        
+        return True
+        
     def save_model(self, i=0):
         print("Saving model with global step:{}".format(i))
         self.saver.save(self.sess, 'saved_models/trained_model', global_step=i)
