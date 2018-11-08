@@ -51,6 +51,8 @@ class Model():
         input_channels = 1
         output_size = input_size
         
+        initializer = tf.contrib.layers.xavier_initializer()
+
         for idx, layer in enumerate(conv_layers):
             output_channels = layer['filters']
             output_size /= layer['stride']
@@ -59,8 +61,9 @@ class Model():
 
             k_size = layer['kernel_size']
             
-            Wi = tf.Variable(tf.truncated_normal([k_size[0], k_size[1], input_channels, output_channels], stddev=0.1))
-            Bi = tf.Variable(tf.ones([output_channels])/10)
+            Wi = tf.Variable(initializer([k_size[0], k_size[1], input_channels, output_channels]))
+            Bi = tf.Variable(initializer([output_channels])/10)
+  
             input_channels = output_channels
             print("Weight with shape {} initialized".format(Wi.shape))
             
@@ -69,13 +72,13 @@ class Model():
     
         output_pixels = int((output_size ** 2) * output_channels)
     
-        Wi = tf.Variable(tf.truncated_normal([output_pixels, fully_conn_layer], stddev=0.1))
-        Bi = tf.Variable(tf.ones([fully_conn_layer])/10)
+        Wi = tf.Variable(initializer([output_pixels, fully_conn_layer]))
+        Bi = tf.Variable(initializer([fully_conn_layer])/10)
         self.W.append(Wi)
         self.B.append(Bi)
     
-        Wi = tf.Variable(tf.truncated_normal([fully_conn_layer, 10], stddev=0.1))
-        Bi = tf.Variable(tf.ones([10])/10)
+        Wi = tf.Variable(initializer([fully_conn_layer, 10]))
+        Bi = tf.Variable(initializer([10])/10)
         self.W.append(Wi)
         self.B.append(Bi)
         
@@ -93,7 +96,7 @@ class Model():
         Y = self.X
         for idx, layer in enumerate(conv_layers):
             stride = layer['stride']
-            Y = tf.nn.relu(tf.nn.conv2d(Y, self.W[idx], strides=[1, stride, stride, 1], padding='SAME') + self.B[idx])
+            Y = tf.nn.elu(tf.nn.conv2d(Y, self.W[idx], strides=[1, stride, stride, 1], padding='SAME') + self.B[idx])
             
             if 'max_pool' in layer:
                 k = layer['max_pool']
@@ -103,7 +106,7 @@ class Model():
     
         Wi, Bi, idx = self.get_next_weights(idx)
         Y = tf.reshape(Y, shape=[-1, Wi.shape[0].value])
-        Y = tf.nn.relu(tf.matmul(Y, Wi) + Bi)
+        Y = tf.nn.elu(tf.matmul(Y, Wi) + Bi)
         Y = tf.nn.dropout(Y, self.pkeep)
         
         Wi, Bi, idx = self.get_next_weights(idx)

@@ -25,7 +25,7 @@ preds = model.predict(X_test)
 preds = [to_label(pred) for pred in preds]
 save_preds(keys, preds, 'predictions.csv')
 
+#seed the split
 #check accuracy on old model
 #batch normalization
-#blog post optimizations
 #residual layers!
