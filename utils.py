@@ -31,7 +31,13 @@ def save_preds(keys, preds, filename):
 def to_label(idx):
     return labels[idx]
 
-def get_spectrograms():
-    files = glob.glob("spectrograms/*.png")
+def get_songs():
+    s = set()
+    files = glob.glob("images/*.png")
     files = [file.split('/')[1] for file in files]
-    return np.array(files)
+    
+    for file in files:
+        if file.split('.')[0] == 'validation': continue
+        s.add('.'.join(file.split('.')[:2]) + '.png')
+        
+    return np.array(list(s))

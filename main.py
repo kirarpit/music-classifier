@@ -6,16 +6,15 @@ Created on Tue Nov  6 20:53:36 2018
 @author: Arpit
 """
 
-from utils import save_preds, get_spectrograms, split_data, to_label
+from utils import save_preds, get_songs, split_data, to_label
 from data_processing import get_image_data
 from model import Model
-import numpy as np
 
-spectros = get_spectrograms()
-spectros_train, spectros_valid = split_data(spectros, 0.85)
+songs = get_songs()
+songs_train, songs_valid = split_data(songs, 0.85)
 
-X_train, Y_train = get_image_data('train', spectros_train)
-X_valid, Y_valid = get_image_data('valid', spectros_valid)
+X_train, Y_train = get_image_data('train', songs_train)
+X_valid, Y_valid = get_image_data('valid', songs_valid)
 
 X_test, keys = get_image_data('test')
 
