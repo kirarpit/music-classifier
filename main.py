@@ -6,42 +6,29 @@ Created on Tue Nov  6 20:53:36 2018
 @author: Arpit
 """
 
-from utils import get_image_data, split_data, load_test_data, to_label, save_preds
+from utils import save_preds, get_spectrograms, split_data, to_label
+from data_processing import get_image_data
 from model import Model
-import operator
 import numpy as np
 
-X, Y = get_image_data()
-X_test = load_test_data()
-X_train, Y_train, X_valid, Y_valid = split_data(X, Y, 0.85)
+spectros = get_spectrograms()
+spectros_train, spectros_valid = split_data(spectros, 0.85)
+
+X_train, Y_train = get_image_data('train', spectros_train)
+X_valid, Y_valid = get_image_data('valid', spectros_valid)
+
+X_test, keys = get_image_data('test')
 
 model = Model()
-model.train(X_train, Y_train, X_valid, Y_valid, 20)
+model.train(X_train, Y_train, X_valid, Y_valid, 100)
 
-preds = []
-for filename, sample_images in X_test:
-    votes = {}
-    sample_images = np.array(sample_images)
-    sample_preds = model.predict(sample_images)
+preds = model.predict(X_test)
+preds = [to_label(pred) for pred in preds]
+save_preds(keys, preds, 'predictions.csv')
 
-    for pred in sample_preds:
-        pred = np.argmax(pred)
-        if pred in votes:
-            votes[pred] += 1
-        else:
-            votes[pred] = 1
-    
-    pred = max(votes.items(), key=operator.itemgetter(1))[0]
-    pred_label = to_label(pred)
-    print(votes, pred, pred_label)
 
-    preds.append((filename, pred_label))
-
-print(preds)
-save_preds(preds, 'predictions.csv')
-
-#graphs
-#then see if learning rate needs to be adjusted if the testing accuracy fluctuates too much
+#saving/loading model
+#max_pooling
 #batch normalization
 #checkpoints!
 #different archi. (more like what medium guy did)

@@ -8,8 +8,10 @@ Created on Tue Nov  6 23:33:06 2018
 
 import tensorflow as tf
 import math
-from utils import get_mini_batch
+import operator
+from utils import get_mini_batch, to_label
 from graph_plot import GraphPlot
+import numpy as np
 
 input_size = 128
 genre_size = 10
@@ -18,18 +20,26 @@ conv_layers = [
 	 , {'filters':32, 'kernel_size': (8, 8), 'stride':2}
 	 , {'filters':32, 'kernel_size': (4, 4), 'stride':4}
 	]
+fully_conn_layer = 1024
 
 class Model():
-    def __init__(self):
+    def __init__(self, load_model=False):
         self.graph_plot = GraphPlot("Performance", "Steps", "% Accuracy")
         self.graph_plot.addPlot(0, "training")
         self.graph_plot.addPlot(1, "validation")
 
-        self.init_weights()
-        self.init_graph()
-        init = tf.global_variables_initializer()
+        # initialising new session
         self.sess = tf.Session()
-        self.sess.run(init)
+
+        if load_model:
+            self.load_model()
+        else:
+            self.init_weights()
+            self.init_graph()
+            
+            init = tf.global_variables_initializer()
+            self.sess.run(init)
+#            self.saver = tf.train.Saver()
 
     def init_weights(self):
         print("Initializing weights.")
@@ -41,6 +51,9 @@ class Model():
         for idx, layer in enumerate(conv_layers):
             output_channels = layer['filters']
             output_size /= layer['stride']
+            if 'max_pool' in layer:
+                output_size /= layer['max_pool']
+
             k_size = layer['kernel_size']
             
             Wi = tf.Variable(tf.truncated_normal([k_size[0], k_size[1], input_channels, output_channels], stddev=0.1))
@@ -53,12 +66,12 @@ class Model():
     
         output_pixels = int((output_size ** 2) * output_channels)
     
-        Wi = tf.Variable(tf.truncated_normal([output_pixels, 200], stddev=0.1))
-        Bi = tf.Variable(tf.ones([200])/10)
+        Wi = tf.Variable(tf.truncated_normal([output_pixels, fully_conn_layer], stddev=0.1))
+        Bi = tf.Variable(tf.ones([fully_conn_layer])/10)
         self.W.append(Wi)
         self.B.append(Bi)
     
-        Wi = tf.Variable(tf.truncated_normal([200, 10], stddev=0.1))
+        Wi = tf.Variable(tf.truncated_normal([fully_conn_layer, 10], stddev=0.1))
         Bi = tf.Variable(tf.ones([10])/10)
         self.W.append(Wi)
         self.B.append(Bi)
@@ -78,6 +91,11 @@ class Model():
         for idx, layer in enumerate(conv_layers):
             stride = layer['stride']
             Y = tf.nn.relu(tf.nn.conv2d(Y, self.W[idx], strides=[1, stride, stride, 1], padding='SAME') + self.B[idx])
+            
+            if 'max_pool' in layer:
+                k = layer['max_pool']
+                Y = tf.nn.max_pool(Y, ksize=[1, k, k, 1], padding='SAME')
+                
             print(Y.shape)
     
         Wi, Bi, idx = self.get_next_weights(idx)
@@ -115,14 +133,62 @@ class Model():
                                                self.step: i, self.pkeep: 0.75})
             
             if i%10 == 0 and len(X_valid) != 0:
-                acc, loss = self.sess.run([self.accuracy, self.cross_entropy], 
-                                     feed_dict={self.X: X_valid, self.Y_: Y_valid,
-                                                self.pkeep: 1.0})
-                print("\nTesting data, Accuracy: {}, Loss: {}\n".format(acc, loss))
+                acc = self.check_accuracy(X_valid, Y_valid)
+                print("\nTesting data, Accuracy: {}\n".format(acc))
                 self.graph_plot.addData((i, acc), 1)
                 self.graph_plot.plot()
+                
+#            if i%100 == 0:
+#                self.save_model(i)
 
+    def check_accuracy(self, X, Y):
+        preds = self.predict(X)
+        accuracy = sum([1 if np.argmax(Y[i])==preds[i] else 0 for i in range(len(Y))])/len(Y)
+        return accuracy
+    
     def predict(self, X):
         print("Predicting.")
+        
+        preds = []
+        for sample_images in X:
+            votes = {}
+            sample_images = np.array(sample_images)
+            sample_preds = self.sess.run(self.Y, feed_dict={self.X: sample_images,
+                                                            self.pkeep: 1.0})
+            for pred in sample_preds:
+                pred = np.argmax(pred)
+                if pred in votes:
+                    votes[pred] += 1
+                else:
+                    votes[pred] = 1
+            
+            pred = max(votes.items(), key=operator.itemgetter(1))[0]
+            preds.append(pred)
 
-        return self.sess.run(self.Y, feed_dict={self.X: X, self.pkeep: 1.0})
+        return preds
+
+    def load_model(self):
+        filename = self.get_latest_model()
+        self.saver = tf.train.import_meta_graph(filename)
+        self.saver.restore(self.sess, tf.train.latest_checkpoint('saved_models/'))
+        graph = tf.get_default_graph()
+        variables = graph.get_collection('trainable_variables')
+
+        #loading weights
+        self.W = []
+        self.B = []
+        i = 0        
+        while i < len(variables):
+            self.W.append(variables[i])
+            i += 1
+            self.B.append(variables[i])
+            i += 1
+            
+        #loading tensors
+        
+    
+    def save_model(self, i=0):
+        self.saver.save(self.sess, 'saved_models/trained_model', global_step=i, max_to_keep=4)
+        
+    def get_latest_model(self):
+        pass
