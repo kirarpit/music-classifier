@@ -41,5 +41,5 @@ class GraphPlot:
             plt.xlabel(self.xlabel)
 
         plt.legend(loc = "best")
-        plt.savefig("/Users/Arpit/Desktop/" + self.name + 'chart.png')
+        plt.savefig("/home/ubuntu/" + self.name + 'chart.png')
         plt.close(fig)

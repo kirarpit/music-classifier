@@ -16,9 +16,10 @@ import numpy as np
 input_size = 128
 genre_size = 10
 conv_layers = [
-	{'filters':32, 'kernel_size': (8, 8), 'stride':2}
-	 , {'filters':32, 'kernel_size': (8, 8), 'stride':2}
-	 , {'filters':32, 'kernel_size': (4, 4), 'stride':4}
+	{'filters':64, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+	 , {'filters':128, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+	 , {'filters':256, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+	 , {'filters':512, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
 	]
 fully_conn_layer = 1024
 pkeep = 0.5
