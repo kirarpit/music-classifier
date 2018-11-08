@@ -15,6 +15,7 @@ def get_mini_batch(X, Y):
     return X[t_rows], Y[t_rows]
 
 def split_data(X, percent):
+    np.random.seed(0)
     t_rows = list(np.random.choice(X.shape[0], int(X.shape[0]*percent), replace=False))
     r_rows = list(set(list(range(X.shape[0])))^set(t_rows))
     
