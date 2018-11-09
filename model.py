@@ -138,7 +138,7 @@ class Model():
             self.sess.run(self.minimize, feed_dict={self.X: batch_X, self.Y_: batch_Y, 
                                                self.step: i, self.pkeep: pkeep})
             
-            if i%10 == 0 and len(X_valid) != 0:
+            if i%100 == 0 and len(X_valid) != 0:
                 acc = self.check_accuracy(X_valid, Y_valid)
                 print("\nTesting data, Accuracy: {}\n".format(acc))
                 self.graph_plot.addData((i, acc), 1)

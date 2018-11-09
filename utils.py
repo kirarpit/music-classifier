@@ -32,14 +32,24 @@ def save_preds(keys, preds, filename):
 def to_label(idx):
     return labels[idx]
 
-def get_songs():
+def label_index(label):
+    if label == 'validation':
+        return 1
+    return labels.index(label)
+
+def get_songs(data_type=None):
     s = set()
     files = glob.glob("images/*.png")
     files = [file.split('/')[1] for file in files]
     
     for file in files:
-        if file.split('.')[0] == 'validation': continue
-        s.add('.'.join(file.split('.')[:2]) + '.png')
+        if file.split('.')[0] == 'validation':
+            if data_type == 'test':
+                s.add('.'.join(file.split('.')[:2]) + '.png')
+            continue
+        
+        if data_type is None:
+            s.add('.'.join(file.split('.')[:2]) + '.png')
         
     return np.array(list(s))
 

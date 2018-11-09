@@ -25,7 +25,16 @@ preds = model.predict(X_test)
 preds = [to_label(pred) for pred in preds]
 save_preds(keys, preds, 'predictions.csv')
 
-#seed the split
-#check accuracy on old model
+#colored mel spectrograms with librosa
+#pixels per second to 30 and 70
+
+#on-server
+#with elu and xavier (do on-system one)
+#deeper fully connected layer
+#conv variations
+
+#on-system
+#load weights - analyse voting - better voting
+
 #batch normalization
 #residual layers!
