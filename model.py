@@ -16,10 +16,11 @@ import numpy as np
 input_size = 128
 genre_size = 10
 conv_layers = [
-	{'filters':32, 'kernel_size': (8, 8), 'stride':2}
-	 , {'filters':32, 'kernel_size': (8, 8), 'stride':2}
-	 , {'filters':32, 'kernel_size': (4, 4), 'stride':4}
-	]
+    {'filters':64, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+     , {'filters':128, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+     , {'filters':256, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+     , {'filters':512, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+    ]
 fully_conn_layer = 1024
 pkeep = 0.5
 
@@ -42,7 +43,7 @@ class Model():
             #must be done after initializing graph as graph might have hidden variables
             init = tf.global_variables_initializer()
             self.sess.run(init)
-            self.saver = tf.train.Saver(max_to_keep=4)
+            self.saver = tf.train.Saver(max_to_keep=2)
 
     def init_weights(self):
         print("Initializing weights.")
@@ -138,13 +139,13 @@ class Model():
             self.sess.run(self.minimize, feed_dict={self.X: batch_X, self.Y_: batch_Y, 
                                                self.step: i, self.pkeep: pkeep})
             
-            if i%100 == 0 and len(X_valid) != 0:
-                acc = self.check_accuracy(X_valid, Y_valid)
-                print("\nTesting data, Accuracy: {}\n".format(acc))
-                self.graph_plot.addData((i, acc), 1)
-                self.graph_plot.plot()
+            if i%100 == 0: 
+                if len(X_valid) != 0:
+                    acc = self.check_accuracy(X_valid, Y_valid)
+                    print("\nTesting data, Accuracy: {}\n".format(acc))
+                    self.graph_plot.addData((i, acc), 1)
                 
-            if i%100 == 0:
+                self.graph_plot.plot()
                 self.save_model(i)
 
     def check_accuracy(self, X, Y):
@@ -204,4 +205,4 @@ class Model():
         
     def save_model(self, i=0):
         print("Saving model with global step:{}".format(i))
-        self.saver.save(self.sess, 'saved_models/trained_model', global_step=i)
+#        self.saver.save(self.sess, 'saved_models/trained_model', global_step=i)
