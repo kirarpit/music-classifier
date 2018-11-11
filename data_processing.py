@@ -6,22 +6,17 @@ Created on Wed Nov  7 18:55:13 2018
 @author: Arpit
 """
 import os.path
-import pickle
 import numpy as np
 from PIL import Image
 import glob
 
 global_labels = ["blues","classical","country","disco","hiphop","jazz","metal","pop","reggae","rock"]
 
-def return_backup(data_file):
-    if os.path.exists(data_file):
-        with open(data_file, 'rb') as handle:
-            print("Cache found!")
-            return pickle.load(handle)
-    else:
-        return None
-
 def get_training_data(files):
+    """Opens the spectrogram file for given
+    songs as images, converts them to np.arrays
+    and one-hot encodes the label"""
+    
     X = []
     Y = []
     for filename in os.listdir('images'):
@@ -29,11 +24,13 @@ def get_training_data(files):
         if file_key not in files:
             continue
         
+        # opens the spectrogram image for a song
         image = Image.open('images/' + filename)
         image = np.asarray(image, dtype=np.uint8)
         image = image[:, :, np.newaxis]/255
         X.append(image)
         
+        # one-hot encodes the label for a song which is derived from file name
         genre = filename.split('.')[0]
         label = [0]*10
         label[global_labels.index(genre)] = 1
@@ -45,12 +42,23 @@ def get_training_data(files):
     return (X, Y)
 
 def load_data(files):
+    """One song is split into 10 splices and then for 
+    each splice spectrogram is saved in a file. This
+    function loads all the spectrograms for a song and
+    then append the result to a list.
+    This format is used to make prediction and voting
+    easily.
+    """
     result = []
     sample_images = []
     keys = []
     labels = []
     
     for filename in sorted(files):
+        """for a song 'country.00018.5.au', 
+        file_id would be 'country.00018.au' and
+        file_sub_id would be '5'."""
+        
         filename_split = filename.split('.')
         file_id = '.'.join(filename_split[:2]) + '.au'
         file_sub_id = filename_split[2]
@@ -74,6 +82,8 @@ def load_data(files):
     return result, labels, keys
 
 def get_validation_data(files):
+    """wrapper for loading validation data
+    on the function load_data"""
     new_files = []
     for file in list(files):
         for i in range(10):
@@ -93,6 +103,8 @@ def get_testing_data():
     return (data, keys)
 
 def get_image_data(data_type, files=None):
+    """wrapper for loading 3 different types
+    of data, i.e., training, validation and testing."""
     if data_type == "train":
         data = get_training_data(files)
     elif data_type == "valid":
@@ -103,6 +115,9 @@ def get_image_data(data_type, files=None):
     return data
 
 def splice_images():
+    """This function splices a spectrogram into 10
+    smaller pieces. This function is not called by
+    the code but was run once manually."""
     for filename in os.listdir('spectrograms'):
         img = Image.open('spectrograms/' + filename)
         filename = filename.split('.')

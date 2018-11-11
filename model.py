@@ -25,7 +25,14 @@ fully_conn_layer = 1024
 pkeep = 0.5
 
 class Model():
+    """It is a class model which contains a convolutional
+    neural network and exposes two main functions, i.e.,
+    'train' and 'predict'"""
+    
     def __init__(self, load_model=False):
+        """Initialises weights, tensor graph and saver"""
+        
+        # plots accuracy vs training steps
         self.graph_plot = GraphPlot("accuracy", "Steps", "% Accuracy")
         self.graph_plot.addPlot(0, "training")
         self.graph_plot.addPlot(1, "validation")
@@ -33,6 +40,7 @@ class Model():
         # initialising new session
         self.sess = tf.Session()
 
+        # loads latest model if True
         if load_model:
             success = self.load_model()
             
@@ -46,12 +54,16 @@ class Model():
             self.saver = tf.train.Saver(max_to_keep=2)
 
     def init_weights(self):
+        """TF variables are initialised for
+        the weights of the ANN"""
+        
         print("Initializing weights.")
         self.W = []
         self.B = []
         input_channels = 1
         output_size = input_size
         
+        # Xavier weights initialization
         initializer = tf.contrib.layers.xavier_initializer()
 
         for idx, layer in enumerate(conv_layers):
@@ -73,6 +85,7 @@ class Model():
     
         output_pixels = int((output_size ** 2) * output_channels)
     
+        # after conv net, weights for fully connected layers are initialised
         Wi = tf.Variable(initializer([output_pixels, fully_conn_layer]))
         Bi = tf.Variable(initializer([fully_conn_layer])/10)
         self.W.append(Wi)
@@ -87,11 +100,14 @@ class Model():
         return self.W[i+1], self.B[i+1], i+1
         
     def init_graph(self):
+        """TF placeholers are initialised for the graph"""
         print("Initializing graph.")
 
         self.X = tf.placeholder(tf.float32, [None, input_size, input_size, 1], name="X")
         self.Y_ = tf.placeholder(tf.float32, [None, genre_size], name="Y_")
         self.step = tf.placeholder(tf.int32, name="step")
+        
+        # percentage of nodes to keep at all fully connected layers
         self.pkeep = tf.placeholder(tf.float32, name="pkeep")
     
         Y = self.X
@@ -105,11 +121,13 @@ class Model():
                 
             print(Y.shape)
     
+        # fully connected layers with dropouts
         Wi, Bi, idx = self.get_next_weights(idx)
         Y = tf.reshape(Y, shape=[-1, Wi.shape[0].value])
         Y = tf.nn.elu(tf.matmul(Y, Wi) + Bi)
         Y = tf.nn.dropout(Y, self.pkeep)
         
+        # softmax layer for classifying
         Wi, Bi, idx = self.get_next_weights(idx)
         Ylogits = tf.matmul(Y, Wi) + Bi
         self.Y = tf.nn.softmax(Ylogits, name="Y")
@@ -122,10 +140,12 @@ class Model():
         correct_prediction = tf.equal(tf.argmax(self.Y, 1), tf.argmax(self.Y_, 1))
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
     
+        # exponential decay in the learning rate and ADAM optimizer
         lr = 0.0001 +  tf.train.exponential_decay(0.003, self.step, 2000, 1/math.e)
         self.minimize = tf.train.AdamOptimizer(lr, name="minimize").minimize(self.cross_entropy)
     
     def train(self, X_train, Y_train, X_valid, Y_valid, iterations=20):
+        """Dictionary is fed in the graph to train the model"""
         print("Training model.")
 
         for i in range(iterations):
@@ -139,6 +159,7 @@ class Model():
             self.sess.run(self.minimize, feed_dict={self.X: batch_X, self.Y_: batch_Y, 
                                                self.step: i, self.pkeep: pkeep})
             
+            # save model and check for accuracy on the validation set every 100 steps
             if i%100 == 0: 
                 if len(X_valid) != 0:
                     acc = self.check_accuracy(X_valid, Y_valid)
@@ -154,12 +175,16 @@ class Model():
         return accuracy
     
     def predict(self, X):
+        """A dictionary is fed to the model's graph to determine predictions"""
         preds = []
         for sample_images in X:
             votes = {}
             sample_images = np.array(sample_images)
             sample_preds = self.sess.run(self.Y, feed_dict={self.X: sample_images,
                                                             self.pkeep: 1.0})
+    
+            # for a song, predictions of all the 10 splices are taken and
+            # then voting is performed to get the final label for this song
             for pred in sample_preds:
                 pred = np.argmax(pred)
                 if pred in votes:
@@ -205,4 +230,4 @@ class Model():
         
     def save_model(self, i=0):
         print("Saving model with global step:{}".format(i))
-#        self.saver.save(self.sess, 'saved_models/trained_model', global_step=i)
+        self.saver.save(self.sess, 'saved_models/trained_model', global_step=i)

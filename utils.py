@@ -11,10 +11,15 @@ import glob
 labels = ["blues","classical","country","disco","hiphop","jazz","metal","pop","reggae","rock"]
 
 def get_mini_batch(X, Y):
+    """choose 100 rows randomly from the given set
+    and return that as a mini-batch for training"""
+    
     t_rows = list(np.random.choice(X.shape[0], 100, replace=False))
     return X[t_rows], Y[t_rows]
 
 def split_data(X, percent):
+    """split any data X according to the percentage given"""
+    
     np.random.seed(0)
     t_rows = list(np.random.choice(X.shape[0], int(X.shape[0]*percent), replace=False))
     r_rows = list(set(list(range(X.shape[0])))^set(t_rows))
@@ -38,6 +43,8 @@ def label_index(label):
     return labels.index(label)
 
 def get_songs(data_type=None):
+    """gets sepctrogram image data for given songs"""
+    
     s = set()
     files = glob.glob("images/*.png")
     files = [file.split('/')[1] for file in files]
@@ -54,6 +61,9 @@ def get_songs(data_type=None):
     return np.array(list(s))
 
 def get_latest_model():
+    """gets latest saved tensorflow model
+    from the directory saved_models"""
+    
     files = glob.glob("saved_models/*meta")
     files.sort()
     
