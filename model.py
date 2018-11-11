@@ -167,6 +167,7 @@ class Model():
                     self.graph_plot.addData((i, acc), 1)
                 
                 self.graph_plot.plot()
+            if i%1000 == 0:
                 self.save_model(i)
 
     def check_accuracy(self, X, Y):
