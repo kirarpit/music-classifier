@@ -16,13 +16,14 @@ import numpy as np
 input_size = 128
 genre_size = 10
 conv_layers = [
-    {'filters':64, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
-     , {'filters':128, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
-     , {'filters':256, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
-     , {'filters':512, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
-    ]
+        {'filters':64, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+         , {'filters':128, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+         , {'filters':256, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+         , {'filters':512, 'kernel_size':(2, 2), 'stride':1, 'max_pool':2}
+        ]
 fully_conn_layer = 1024
 pkeep = 0.5
+beta = 0.2
 
 class Model():
     """It is a class model which contains a convolutional
@@ -43,6 +44,8 @@ class Model():
         # loads latest model if True
         if load_model:
             success = self.load_model()
+        else:
+            success = False
             
         if not success:
             self.init_weights()
@@ -91,7 +94,12 @@ class Model():
         self.W.append(Wi)
         self.B.append(Bi)
     
-        Wi = tf.Variable(initializer([fully_conn_layer, 10]))
+        Wi = tf.Variable(initializer([fully_conn_layer, fully_conn_layer//2]))
+        Bi = tf.Variable(initializer([fully_conn_layer//2])/10)
+        self.W.append(Wi)
+        self.B.append(Bi)
+        
+        Wi = tf.Variable(initializer([fully_conn_layer//2, 10]))
         Bi = tf.Variable(initializer([10])/10)
         self.W.append(Wi)
         self.B.append(Bi)
@@ -127,6 +135,12 @@ class Model():
         Y = tf.nn.elu(tf.matmul(Y, Wi) + Bi)
         Y = tf.nn.dropout(Y, self.pkeep)
         
+        # fully connected layers with dropouts
+        Wi, Bi, idx = self.get_next_weights(idx)
+        Y = tf.reshape(Y, shape=[-1, Wi.shape[0].value])
+        Y = tf.nn.elu(tf.matmul(Y, Wi) + Bi)
+        Y = tf.nn.dropout(Y, self.pkeep)
+
         # softmax layer for classifying
         Wi, Bi, idx = self.get_next_weights(idx)
         Ylogits = tf.matmul(Y, Wi) + Bi
@@ -134,15 +148,25 @@ class Model():
     
         # cross-entropy loss function (= -sum(Y_i * log(Yi)) )
         cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=Ylogits, labels=self.Y_)
-        self.cross_entropy = tf.reduce_mean(cross_entropy, name="cross_entropy")*100
+        cross_entropy = tf.reduce_mean(cross_entropy, name="cross_entropy")*100
     
+        #L2 regularization
+        regularizer = None
+        for Wx in self.W:
+            if regularizer is not None:
+                regularizer += tf.nn.l2_loss(Wx)
+            else:
+                regularizer = tf.nn.l2_loss(Wx)
+
+        self.loss = cross_entropy + beta * regularizer
+
         # accuracy of the trained model, between 0 (worst) and 1 (best)
         correct_prediction = tf.equal(tf.argmax(self.Y, 1), tf.argmax(self.Y_, 1))
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32), name="accuracy")
     
         # exponential decay in the learning rate and ADAM optimizer
         lr = 0.0001 +  tf.train.exponential_decay(0.003, self.step, 2000, 1/math.e)
-        self.minimize = tf.train.AdamOptimizer(lr, name="minimize").minimize(self.cross_entropy)
+        self.minimize = tf.train.AdamOptimizer(lr, name="minimize").minimize(self.loss)
     
     def train(self, X_train, Y_train, X_valid, Y_valid, iterations=20):
         """Dictionary is fed in the graph to train the model"""
@@ -150,7 +174,7 @@ class Model():
 
         for i in range(iterations):
             batch_X, batch_Y = get_mini_batch(X_train, Y_train)
-            acc, loss = self.sess.run([self.accuracy, self.cross_entropy], 
+            acc, loss = self.sess.run([self.accuracy, self.loss], 
                                  feed_dict={self.X: batch_X, self.Y_: batch_Y,
                                             self.step: i, self.pkeep: 1.0})
             print("Step: {}, Accuracy: {}, Loss: {}".format(i, acc, loss))
@@ -223,7 +247,7 @@ class Model():
         self.step = graph.get_tensor_by_name("step:0")
         self.pkeep = graph.get_tensor_by_name("pkeep:0")
         self.Y = graph.get_tensor_by_name("Y:0")
-        self.cross_entropy = graph.get_tensor_by_name("cross_entropy:0")*100
+        self.loss = graph.get_tensor_by_name("loss:0")*100
         self.accuracy = graph.get_tensor_by_name("accuracy:0")
         self.minimize = graph.get_operation_by_name("minimize")   
         

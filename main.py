@@ -23,7 +23,7 @@ X_valid, Y_valid = get_image_data('valid', songs_valid)
 # get names and spectrogram data for the final testing set(which is to be uploaded)
 X_test, keys = get_image_data('test')
 
-model = Model(True)
+model = Model(False)
 model.train(X_train, Y_train, X_valid, Y_valid, 5000)
 
 preds = model.predict(X_test)

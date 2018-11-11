@@ -10,6 +10,7 @@ import numpy as np
 from PIL import Image
 import glob
 
+num_pics = 23
 global_labels = ["blues","classical","country","disco","hiphop","jazz","metal","pop","reggae","rock"]
 
 def get_training_data(files):
@@ -86,7 +87,7 @@ def get_validation_data(files):
     on the function load_data"""
     new_files = []
     for file in list(files):
-        for i in range(10):
+        for i in range(num_pics):
             x = file.split('.')
             x[2] = str(i)
             x.append('png')
@@ -123,7 +124,7 @@ def splice_images():
         filename = filename.split('.')
         filename.append('png')
         
-        for i in range(10):
+        for i in range(num_pics):
             filename[2] = str(i)
             starting_pixel = i * 128
             temp_image = img.crop((starting_pixel, 1, starting_pixel + 128, 129))
