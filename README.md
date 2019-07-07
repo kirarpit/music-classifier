@@ -1,5 +1,5 @@
 # Music Genre Classifier with Fourier Tranformation and Spectrograms
-
+## Update: [Secured 2nd position in an in-class Kaggle competition](https://www.kaggle.com/c/project-1-music-classifier-cs529-2018/leaderboard)
 ## About
 - This is a music genre classifier written in Python.
 - As the title suggests, the goal is to classify music files into 10 predetermined genres such as jazz, classical, country, pop, rock, and metal using GTZAN dataset, which is frequently used to benchmark music genre classification tasks.
